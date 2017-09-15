@@ -1,16 +1,19 @@
+const fs = require("fs");
+
 function transpile(code) {
     const replaced = code.replace(/(true|false)/g, (match) => bool(match))
-	  .replace(/(\+|-)?\s*([0-9]+)/g, (match, sign, num) => number(+num, sign))
-	  .replace(/undefined/g, undef());
+	  .replace(/(\+|-|\*|\/|%)?\s*([0-9]+)/g, (match, sign, num) => number(+num, sign))
+	  .replace(/undefined/g, undef())
+	  .replace(/""/g, empty_str());
     const idReplaced = replaceIdentifiers(replaced)
     return idReplaced.replace(/\s/g, "");
 }
 
 function number(n, sign) {
     if (n < 10) {
-	if (sign == "-") {
-	    return `-(${digit(n)})`;
-	} else {
+	if (sign) {
+	    return `${sign}(${digit(n)})`;
+	}else {
 	    return digit(n)
 	}
     } else {
@@ -36,6 +39,10 @@ function bool(b) {
 
 function undef() {
     return "[][[]]";
+}
+
+function empty_str() {
+    return "[]+[]";
 }
 
 /**
@@ -83,7 +90,17 @@ function associate(list, transform) {
     return obj;
 }
 
-const toTranspile = "((LEN, PUSH, SWAP) => (list, comparator = (a, b) => a - b) => ((quicksort) => (quicksort = (items) => ((length) => length > 2 ? (([pivot, ...rest]) => ((length_rest) => ((iterator) => (iterator = (index, left, right) => index < length_rest ? comparator(rest[index], pivot) < 0 ? iterator(index + 1, PUSH(left, rest[index]), right) : iterator(index + 1, left, PUSH(right, rest[index])) : [...quicksort(left), pivot, ...quicksort(right)])(0, [], []))())(LEN(rest)))(items) : length == 2 ? comparator(...items) > 0 ? SWAP(items) : items : items)(LEN(items)))(list))())((list) => ((counter) => (counter = (index) => list[index] != undefined ? counter(index + 1) : index)(0))(), (list, item) => [...list, item], ([a, b]) => [b, a])";
-
-console.log(transpile(toTranspile))
-console.log(toTranspile)
+if (process.argv.length > 2) {
+    const [node, transpiler, ...args] = process.argv;
+    console.log(args);
+    args.forEach((arg) => {
+	fs.readFile(arg, "utf8", (err, data) => {
+	    if (err) {
+		console.error(err);
+		return;
+	    }
+	    console.log(`${arg}:`);
+	    console.log(transpile(data));
+	});
+    });
+}
